@@ -128,3 +128,18 @@ function viewEmployees() {
         mainMenu();
     });
 };
+
+function viewRoles() {
+    let query = `SELECT role.id, role.title, department.department_name AS department, role.salary
+              FROM role
+              INNER JOIN department ON role.department_id = department.id`;
+
+    connection.query(query, function(err, res) {
+        console.log(chalk.yellow.bold(`====================================================================================`));
+        console.log(`                              ` + chalk.blue.bold(`Employee Roles:`));
+        console.log(chalk.yellow.bold(`====================================================================================`));
+
+        console.table(res);
+        mainMenu();
+    });
+};
