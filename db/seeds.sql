@@ -30,7 +30,7 @@ INSERT INTO role (id, title, salary, department_id)
 
 INSERT INTO employee (id, first_name, last_name, role_id, manager_id)
     VALUES
-    (1000, "Amir", "Hackett", 40, null),
+    (1000, "charlie", "sammuel", 40, null),
     (1001, "Leon", "Kennedy", 10, null),
     (1002, "Bruce", "Wayne", 11, null),
     (1003, "Roland", "Dechain", 12, null),
