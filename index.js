@@ -2,10 +2,11 @@ const inquirer = require("inquirer");
 // const mysql = require("mysql2");
 const db = require("./db/connection");
 const promisemysql = require("promise-mysql");
-const consoleTable = require("console.table");
+// const consoleTable = require("console.table");
 const figlet = require("figlet");
 const chalk = require("chalk");
 
+// the banner
 db.connect((err) => {
   if (err) {
     return console.error("error: " + err.message);
@@ -109,7 +110,7 @@ function mainMenu() {
 
 function viewDepartments() {
   let query = "SELECT * FROM  department";
-  connection.query(query, function (err, res) {
+  db.query(query, function (err, res) {
     console.log(
       chalk.yellow.bold(
         `====================================================================================`
@@ -132,7 +133,7 @@ function viewDepartments() {
 function viewEmployees() {
   let query =
     "SELECT e.id, e.first_name, e.last_name, role.title, department.department_name AS department, role.salary, concat(m.first_name, ' ' ,  m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id INNER JOIN role ON e.role_id = role.id INNER JOIN department ON role.department_id = department.id ORDER BY id ASC";
-  connection.query(query, function (err, res) {
+  db.query(query, function (err, res) {
     console.log(
       chalk.yellow.bold(
         `====================================================================================`
@@ -157,7 +158,7 @@ function viewRoles() {
               FROM role
               INNER JOIN department ON role.department_id = department.id`;
 
-  connection.query(query, function (err, res) {
+  db.query(query, function (err, res) {
     console.log(
       chalk.yellow.bold(
         `====================================================================================`
@@ -182,8 +183,8 @@ function viewManagers() {
 
   promisemysql
     .createConnection(db)
-    .then((connect) => {
-      return connect.query(
+    .then((db) => {
+      return db.query(
         "SELECT DISTINCT m.id, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employee e Inner JOIN employee m ON e.manager_id = m.id"
       );
     })
@@ -218,7 +219,7 @@ function viewManagers() {
         INNER JOIN department ON role.department_id = department.id
         WHERE e.manager_id = ${managerID};`;
 
-          connection.query(query, (err, res) => {
+          db.query(query, (err, res) => {
             if (err) return err;
 
             // Results displayed in console.table
@@ -252,9 +253,9 @@ function viewDeptEmployees() {
 
   promisemysql
     .createConnection(db)
-    .then((connect) => {
+    .then((db) => {
       // Query just names of department
-      return connect.query("SELECT department_name FROM department");
+      return db.query("SELECT department_name FROM department");
     })
     .then(function (value) {
       // Place all names within deptArr
@@ -275,7 +276,7 @@ function viewDeptEmployees() {
         .then((answer) => {
           // Query all employees depending on selected department
           const query = `SELECT e.id AS ID, e.first_name AS 'First Name', e.last_name AS 'Last Name', role.title AS Title, department.department_name AS Department, role.salary AS Salary, concat(m.first_name, ' ' ,  m.last_name) AS Manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id INNER JOIN role ON e.role_id = role.id INNER JOIN department ON role.department_id = department.id WHERE department.department_name = '${answer.department}' ORDER BY id ASC`;
-          connection.query(query, (err, res) => {
+          db.query(query, (err, res) => {
             if (err) return err;
 
             // Results displayed in console.table
@@ -320,7 +321,7 @@ function addDept() {
     ])
 
     .then(function (response) {
-      connection.query(
+      db.query(
         "INSERT INTO department SET ?",
         {
           id: response.deptID,
@@ -360,7 +361,7 @@ function addRole() {
       },
     ])
     .then(function (response) {
-      connection.query(
+      db.query(
         "INSERT INTO role SET ?",
         {
           id: response.roleID,
@@ -408,7 +409,7 @@ function addEmployee() {
     ])
 
     .then(function (response) {
-      connection.query(
+      db.query(
         "INSERT INTO employee SET ?",
         {
           id: response.employeeID,
@@ -433,11 +434,11 @@ function updateRole() {
 
   promisemysql
     .createConnection(db)
-    .then((connect) => {
+    .then((db) => {
       return Promise.all([
         // query all roles and employee
-        connect.query("SELECT id, title FROM role ORDER BY title ASC"),
-        connect.query(
+        db.query("SELECT id, title FROM role ORDER BY title ASC"),
+        db.query(
           "SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS Employee FROM employee ORDER BY Employee ASC"
         ),
       ]);
@@ -492,7 +493,7 @@ function updateRole() {
           }
 
           // update employee with new role
-          connection.query(
+          db.query(
             `UPDATE employee SET role_id = ${roleID} WHERE id = ${employeeID}`,
             (err, res) => {
               if (err) return err;
@@ -513,7 +514,7 @@ function updateManager() {
   // set global array for employees
   let employeeArr = [];
 
-  connection.query(
+  db.query(
     "SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS Employee FROM employee ORDER BY Employee ASC",
     function (err, employees) {
       // place employees in array
@@ -557,7 +558,7 @@ function updateManager() {
           }
 
           // update employee with manager ID
-          connection.query(
+          db.query(
             `UPDATE employee SET manager_id = ${managerID} WHERE id = ${employeeID}`,
             (err, res) => {
               if (err) return err;
@@ -579,7 +580,7 @@ function deleteEmployee() {
   // Create global employee array
   let employeeArr = [];
 
-  connection.query(
+  db.query(
     "SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS employee FROM employee ORDER BY Employee ASC",
     function (err, res) {
       // Place all employees in array
@@ -616,7 +617,7 @@ function deleteEmployee() {
             }
 
             // deleted selected employee
-            connection.query(
+            db.query(
               `DELETE FROM employee WHERE id=${employeeID};`,
               (err, res) => {
                 if (err) return err;
@@ -643,7 +644,7 @@ function deleteRole() {
   let roleArr = [];
 
   // query all roles
-  connection.query("SELECT role.id, title FROM role", function (err, res) {
+  db.query("SELECT role.id, title FROM role", function (err, res) {
     // add all roles to array
     for (i = 0; i < res.length; i++) {
       roleArr.push(res[i].title);
@@ -694,7 +695,7 @@ function deleteRole() {
               }
 
               // delete role
-              connection.query(
+              db.query(
                 `DELETE FROM role WHERE id=${roleID};`,
                 (err, res) => {
                   if (err) return err;
@@ -720,7 +721,7 @@ function deleteDepartment() {
   // department array
   let deptArr = [];
 
-  connection.query(
+  db.query(
     "SELECT id, department_name FROM department",
     function (err, depts) {
       // add all department to array
@@ -774,7 +775,7 @@ function deleteDepartment() {
                 }
 
                 // delete department
-                connection.query(
+                db.query(
                   `DELETE FROM department WHERE id=${deptID};`,
                   (err, res) => {
                     if (err) return err;
@@ -817,7 +818,7 @@ function viewBudget() {
               SUM(salary) AS budget
               FROM  role 
               INNER JOIN department ON role.department_id = department.id GROUP BY role.department_id`;
-  connection.query(sql, (error, response) => {
+  db.query(sql, (error, response) => {
     if (error) throw error;
     console.table(response);
     console.log(
