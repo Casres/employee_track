@@ -104,3 +104,15 @@ function mainMenu() {
       }
     });
 }
+
+function viewDepartments() {
+    let query = "SELECT * FROM  department";
+    connection.query(query, function(err, res) {
+        console.log(chalk.yellow.bold(`====================================================================================`));
+        console.log(`                              ` + chalk.blue.bold(`All Departments:`));
+        console.log(chalk.yellow.bold(`====================================================================================`));
+
+        console.table(res);
+        mainMenu();
+    });
+};
