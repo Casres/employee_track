@@ -116,3 +116,15 @@ function viewDepartments() {
         mainMenu();
     });
 };
+
+function viewEmployees() {
+    let query = "SELECT e.id, e.first_name, e.last_name, role.title, department.department_name AS department, role.salary, concat(m.first_name, ' ' ,  m.last_name) AS manager FROM employee e LEFT JOIN employee m ON e.manager_id = m.id INNER JOIN role ON e.role_id = role.id INNER JOIN department ON role.department_id = department.id ORDER BY id ASC";
+    connection.query(query, function(err, res) {
+        console.log(chalk.yellow.bold(`====================================================================================`));
+        console.log(`                              ` + chalk.blue.bold(`Employees:`));
+        console.log(chalk.yellow.bold(`====================================================================================`));
+
+        console.table(res);
+        mainMenu();
+    });
+};
