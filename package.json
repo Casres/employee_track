@@ -16,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/Casres/employee_track/issues"
   },
-  "homepage": "https://github.com/Casres/employee_track#readme"
+  "homepage": "https://github.com/Casres/employee_track#readme",
+  "dependencies": {
+    "console.table": "^0.10.0",
+    "inquirer": "^9.0.2"
+  }
 }
