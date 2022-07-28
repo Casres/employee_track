@@ -1,6 +1,7 @@
 const inquirer = require("inquirer");
-const mysql = require("mysql2");
+// const mysql = require("mysql2");
 const db = require("./db/connection");
+const promisemysql = require("promise-mysql");
 const consoleTable = require("console.table");
 const figlet = require("figlet");
 const chalk = require("chalk");
@@ -377,402 +378,454 @@ function addRole() {
 }
 
 function addEmployee() {
-    inquirer
-        .prompt([
-            {
-                name: "employeeID",
-                type: "input",
-                message: "What is the ID of the new employee?",
-            },
-            {
-                name: "empFirstName",
-                type: "input",
-                message: "What is the first name of the new employee?",
-            },
-            {
-                name: "empLastName",
-                type: "input",
-                message: "What is the last name of the new employee?",
-            },
-            {
-                name: "empRole",
-                type: "input",
-                message: "What is the role ID for the new employee?",
-            },
-            {
-                name: "empManager",
-                type: "input",
-                message: "What is id of the new employee's manager?",
-            }
-        ])
+  inquirer
+    .prompt([
+      {
+        name: "employeeID",
+        type: "input",
+        message: "What is the ID of the new employee?",
+      },
+      {
+        name: "empFirstName",
+        type: "input",
+        message: "What is the first name of the new employee?",
+      },
+      {
+        name: "empLastName",
+        type: "input",
+        message: "What is the last name of the new employee?",
+      },
+      {
+        name: "empRole",
+        type: "input",
+        message: "What is the role ID for the new employee?",
+      },
+      {
+        name: "empManager",
+        type: "input",
+        message: "What is id of the new employee's manager?",
+      },
+    ])
 
-        .then(function(response) {
-            connection.query("INSERT INTO employee SET ?", {
-                    id: response.employeeID,
-                    first_name: response.empFirstName,
-                    last_name: response.empLastName,
-                    role_id: response.empRole,
-                    manager_id: response.empManager,
-                },
-                function(err) {
-                    if (err) throw err;
-                    console.log("Your new employee was created successfully!");
-                    mainMenu();
-                }
-            );
-        });
-};
+    .then(function (response) {
+      connection.query(
+        "INSERT INTO employee SET ?",
+        {
+          id: response.employeeID,
+          first_name: response.empFirstName,
+          last_name: response.empLastName,
+          role_id: response.empRole,
+          manager_id: response.empManager,
+        },
+        function (err) {
+          if (err) throw err;
+          console.log("Your new employee was created successfully!");
+          mainMenu();
+        }
+      );
+    });
+}
 
 function updateRole() {
+  // create employee and role array
+  let employeeArr = [];
+  let roleArr = [];
 
-    // create employee and role array
-    let employeeArr = [];
-    let roleArr = [];
+  promisemysql
+    .createConnection(db)
+    .then((connect) => {
+      return Promise.all([
+        // query all roles and employee
+        connect.query("SELECT id, title FROM role ORDER BY title ASC"),
+        connect.query(
+          "SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS Employee FROM employee ORDER BY Employee ASC"
+        ),
+      ]);
+    })
+    .then(([roles, employees]) => {
+      // place all roles in array
+      for (i = 0; i < roles.length; i++) {
+        roleArr.push(roles[i].title);
+      }
 
-    promisemysql.createConnection(db).then((connect) => {
-        return Promise.all([
+      // place all empoyees in array
+      for (i = 0; i < employees.length; i++) {
+        employeeArr.push(employees[i].Employee);
+      }
 
-            // query all roles and employee
-            connect.query('SELECT id, title FROM role ORDER BY title ASC'),
-            connect.query("SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS Employee FROM employee ORDER BY Employee ASC")
-        ]);
-    }).then(([roles, employees]) => {
+      return Promise.all([roles, employees]);
+    })
+    .then(([roles, employees]) => {
+      inquirer
+        .prompt([
+          {
+            // prompt user to select employee
+            name: "employee",
+            type: "list",
+            message: "Who would you like to edit?",
+            choices: employeeArr,
+          },
+          {
+            // Select role to update employee
+            name: "role",
+            type: "list",
+            message: "What is their new role?",
+            choices: roleArr,
+          },
+        ])
+        .then((answer) => {
+          let roleID;
+          let employeeID;
 
-        // place all roles in array
-        for (i=0; i < roles.length; i++){
-            roleArr.push(roles[i].title);
-        }
-
-        // place all empoyees in array
-        for (i=0; i < employees.length; i++){
-            employeeArr.push(employees[i].Employee);
-        }
-
-        return Promise.all([roles, employees]);
-    }).then(([roles, employees]) => {
-
-        inquirer.prompt([
-            {
-                // prompt user to select employee
-                name: "employee",
-                type: "list",
-                message: "Who would you like to edit?",
-                choices: employeeArr
-            }, {
-                // Select role to update employee
-                name: "role",
-                type: "list",
-                message: "What is their new role?",
-                choices: roleArr
-            },]).then((answer) => {
-
-            let roleID;
-            let employeeID;
-
-            /// get ID of role selected
-            for (i=0; i < roles.length; i++){
-                if (answer.role == roles[i].title){
-                    roleID = roles[i].id;
-                }
+          /// get ID of role selected
+          for (i = 0; i < roles.length; i++) {
+            if (answer.role == roles[i].title) {
+              roleID = roles[i].id;
             }
+          }
 
-            // get ID of employee selected
-            for (i=0; i < employees.length; i++){
-                if (answer.employee == employees[i].Employee){
-                    employeeID = employees[i].id;
-                }
+          // get ID of employee selected
+          for (i = 0; i < employees.length; i++) {
+            if (answer.employee == employees[i].Employee) {
+              employeeID = employees[i].id;
             }
+          }
 
-            // update employee with new role
-            connection.query(`UPDATE employee SET role_id = ${roleID} WHERE id = ${employeeID}`, (err, res) => {
-                if(err) return err;
+          // update employee with new role
+          connection.query(
+            `UPDATE employee SET role_id = ${roleID} WHERE id = ${employeeID}`,
+            (err, res) => {
+              if (err) return err;
 
-                // confirm update employee
-                console.log(`\n ${answer.employee} ROLE UPDATED TO ${answer.role}...\n `);
+              // confirm update employee
+              console.log(
+                `\n ${answer.employee} ROLE UPDATED TO ${answer.role}...\n `
+              );
 
-                mainMenu();
-            });
+              mainMenu();
+            }
+          );
         });
     });
 }
 
 function updateManager() {
+  // set global array for employees
+  let employeeArr = [];
 
-    // set global array for employees
-    let employeeArr = [];
+  connection.query(
+    "SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS Employee FROM employee ORDER BY Employee ASC",
+    function (err, employees) {
+      // place employees in array
+      for (i = 0; i < employees.length; i++) {
+        employeeArr.push(employees[i].Employee);
+      }
 
-    connection.query("SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS Employee FROM employee ORDER BY Employee ASC", function (err, employees) {
-        // place employees in array
-        for (i=0; i < employees.length; i++){
-            employeeArr.push(employees[i].Employee);
-        }
+      inquirer
+        .prompt([
+          {
+            // prompt user to selected employee
+            name: "employee",
+            type: "list",
+            message: "Who would you like to edit?",
+            choices: employeeArr,
+          },
+          {
+            // prompt user to select new manager
+            name: "manager",
+            type: "list",
+            message: "Who is their new Manager?",
+            choices: employeeArr,
+          },
+        ])
+        .then((answer) => {
+          let employeeID;
+          let managerID;
 
-        inquirer.prompt([
-            {
-                // prompt user to selected employee
-                name: "employee",
-                type: "list",
-                message: "Who would you like to edit?",
-                choices: employeeArr
-            }, {
-                // prompt user to select new manager
-                name: "manager",
-                type: "list",
-                message: "Who is their new Manager?",
-                choices: employeeArr
-            },]).then((answer) => {
-
-            let employeeID;
-            let managerID;
-
-            // get ID of selected manager
-            for (i=0; i < employees.length; i++){
-                if (answer.manager == employees[i].Employee){
-                    managerID = employees[i].id;
-                }
+          // get ID of selected manager
+          for (i = 0; i < employees.length; i++) {
+            if (answer.manager == employees[i].Employee) {
+              managerID = employees[i].id;
             }
+          }
 
-            // get ID of selected employee
-            for (i=0; i < employees.length; i++){
-                if (answer.employee == employees[i].Employee){
-                    employeeID = employees[i].id;
-                }
+          // get ID of selected employee
+          for (i = 0; i < employees.length; i++) {
+            if (answer.employee == employees[i].Employee) {
+              employeeID = employees[i].id;
             }
+          }
 
-            // update employee with manager ID
-            connection.query(`UPDATE employee SET manager_id = ${managerID} WHERE id = ${employeeID}`, (err, res) => {
-                if(err) return err;
+          // update employee with manager ID
+          connection.query(
+            `UPDATE employee SET manager_id = ${managerID} WHERE id = ${employeeID}`,
+            (err, res) => {
+              if (err) return err;
 
-                // confirm update employee
-                console.log(`\n ${answer.employee} MANAGER UPDATED TO ${answer.manager}...\n`);
+              // confirm update employee
+              console.log(
+                `\n ${answer.employee} MANAGER UPDATED TO ${answer.manager}...\n`
+              );
 
-                mainMenu();
-            });
+              mainMenu();
+            }
+          );
         });
-    });
+    }
+  );
 }
 
 function deleteEmployee() {
+  // Create global employee array
+  let employeeArr = [];
 
-    // Create global employee array
-    let employeeArr = [];
+  connection.query(
+    "SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS employee FROM employee ORDER BY Employee ASC",
+    function (err, res) {
+      // Place all employees in array
+      for (i = 0; i < res.length; i++) {
+        employeeArr.push(res[i].employee);
+      }
 
-    connection.query("SELECT employee.id, concat(employee.first_name, ' ' ,  employee.last_name) AS employee FROM employee ORDER BY Employee ASC", function(err, res) {
-        // Place all employees in array
-        for (i = 0; i < res.length; i++) {
-            employeeArr.push(res[i].employee);
-        }
+      inquirer
+        .prompt([
+          {
+            // prompt user of all employees
+            name: "employee",
+            type: "list",
+            message: "Who would you like to delete?",
+            choices: employeeArr,
+          },
+          {
+            // confirm delete of employee
+            name: "yesNo",
+            type: "list",
+            message: "Confirm deletion",
+            choices: ["NO", "YES"],
+          },
+        ])
+        .then((answer) => {
+          if (answer.yesNo == "YES") {
+            let employeeID;
 
-        inquirer.prompt([
-            {
-                // prompt user of all employees
-                name: "employee",
-                type: "list",
-                message: "Who would you like to delete?",
-                choices: employeeArr
-            }, {
-                // confirm delete of employee
-                name: "yesNo",
-                type: "list",
-                message: "Confirm deletion",
-                choices: ["NO", "YES"]
-            }]).then((answer) => {
-
-            if (answer.yesNo == "YES") {
-                let employeeID;
-
-                // if confirmed, get ID of employee selected
-                for (i = 0; i < res.length; i++) {
-                    if (answer.employee == res[i].employee) {
-                        employeeID = res[i].id;
-                    }
-                }
-
-                // deleted selected employee
-                connection.query(`DELETE FROM employee WHERE id=${employeeID};`, (err, res) => {
-                    if (err) return err;
-
-                    // confirm deleted employee
-                    console.log(`\n EMPLOYEE '${answer.employee}' DELETED...\n `);
-
-                    mainMenu();
-                });
+            // if confirmed, get ID of employee selected
+            for (i = 0; i < res.length; i++) {
+              if (answer.employee == res[i].employee) {
+                employeeID = res[i].id;
+              }
             }
-            else {
 
-                // if not confirmed, go back to main menu
-                console.log(`\n EMPLOYEE '${answer.employee}' NOT DELETED...\n `);
+            // deleted selected employee
+            connection.query(
+              `DELETE FROM employee WHERE id=${employeeID};`,
+              (err, res) => {
+                if (err) return err;
+
+                // confirm deleted employee
+                console.log(`\n EMPLOYEE '${answer.employee}' DELETED...\n `);
 
                 mainMenu();
-            }
+              }
+            );
+          } else {
+            // if not confirmed, go back to main menu
+            console.log(`\n EMPLOYEE '${answer.employee}' NOT DELETED...\n `);
 
+            mainMenu();
+          }
         });
-    })
+    }
+  );
 }
 
 function deleteRole() {
+  // Create role array
+  let roleArr = [];
 
-    // Create role array
-    let roleArr = [];
+  // query all roles
+  connection.query("SELECT role.id, title FROM role", function (err, res) {
+    // add all roles to array
+    for (i = 0; i < res.length; i++) {
+      roleArr.push(res[i].title);
+    }
 
-    // query all roles
-    connection.query("SELECT role.id, title FROM role", function (err, res) {
-        // add all roles to array
-        for (i = 0; i < res.length; i++) {
-            roleArr.push(res[i].title);
+    inquirer
+      .prompt([
+        {
+          // confirm to continue to select role to delete
+          name: "continueDelete",
+          type: "list",
+          message:
+            "*** WARNING *** Deleting role will delete all employees associated with the role. Do you want to continue?",
+          choices: ["NO", "YES"],
+        },
+      ])
+      .then((answer) => {
+        // if not, go to main menu
+        if (answer.continueDelete === "NO") {
+          mainMenu();
         }
+      })
+      .then(() => {
+        inquirer
+          .prompt([
+            {
+              name: "role",
+              type: "list",
+              message: "Which role would you like to delete?",
+              choices: roleArr,
+            },
+            {
+              // confirm to delete role by typing role exactly
+              name: "confirmDelete",
+              type: "Input",
+              message:
+                "Type the role title EXACTLY to confirm deletion of the role",
+            },
+          ])
+          .then((answer) => {
+            if (answer.confirmDelete === answer.role) {
+              // get role id of of selected role
+              let roleID;
+              for (i = 0; i < res.length; i++) {
+                if (answer.role == res[i].title) {
+                  roleID = res[i].id;
+                }
+              }
 
-        inquirer.prompt([{
-            // confirm to continue to select role to delete
-            name: "continueDelete",
-            type: "list",
-            message: "*** WARNING *** Deleting role will delete all employees associated with the role. Do you want to continue?",
-            choices: ["NO", "YES"]
-        }]).then((answer) => {
+              // delete role
+              connection.query(
+                `DELETE FROM role WHERE id=${roleID};`,
+                (err, res) => {
+                  if (err) return err;
 
-            // if not, go to main menu
-            if (answer.continueDelete === "NO") {
-                mainMenu();
+                  // confirm role has been added
+                  console.log(`\n ROLE '${answer.role}' DELETED...\n `);
+
+                  mainMenu();
+                }
+              );
+            } else {
+              // if not confirmed, do not delete
+              console.log(`\n ROLE '${answer.role}' NOT DELETED...\n `);
+
+              mainMenu();
             }
-
-        }).then(() => {
-
-            inquirer.prompt([{
-                name: "role",
-                type: "list",
-                message: "Which role would you like to delete?",
-                choices: roleArr
-            }, {
-                // confirm to delete role by typing role exactly
-                name: "confirmDelete",
-                type: "Input",
-                message: "Type the role title EXACTLY to confirm deletion of the role"
-
-            }]).then((answer) => {
-
-                if (answer.confirmDelete === answer.role) {
-
-                    // get role id of of selected role
-                    let roleID;
-                    for (i=0; i < res.length; i++){
-                        if (answer.role == res[i].title){
-                            roleID = res[i].id;
-                        }
-                    }
-
-                    // delete role
-                    connection.query(`DELETE FROM role WHERE id=${roleID};`, (err, res) => {
-                        if(err) return err;
-
-                        // confirm role has been added
-                        console.log(`\n ROLE '${answer.role}' DELETED...\n `);
-
-                        mainMenu();
-                    });
-                }
-                else {
-
-                    // if not confirmed, do not delete
-                    console.log(`\n ROLE '${answer.role}' NOT DELETED...\n `);
-
-                    mainMenu();
-                }
-            });
-        })
-    });
+          });
+      });
+  });
 }
 
 function deleteDepartment() {
+  // department array
+  let deptArr = [];
 
-    // department array
-    let deptArr = [];
+  connection.query(
+    "SELECT id, department_name FROM department",
+    function (err, depts) {
+      // add all department to array
+      for (i = 0; i < depts.length; i++) {
+        deptArr.push(depts[i].department_name);
+      }
 
-    connection.query("SELECT id, department_name FROM department", function (err, depts) {
-        // add all department to array
-        for (i=0; i < depts.length; i++){
-            deptArr.push(depts[i].department_name);
-        }
-
-        inquirer.prompt([{
-
+      inquirer
+        .prompt([
+          {
             // confirm to continue to select department to delete
             name: "continueDelete",
             type: "list",
-            message: "*** WARNING *** Deleting a department will delete all role and employees associated with the department. Do you want to continue?",
-            choices: ["NO", "YES"]
-        }]).then((answer) => {
-
-            // if not, go back to main menu
-            if (answer.continueDelete === "NO") {
-                mainMenu();
-            }
-
-        }).then(() => {
-
-            inquirer.prompt([{
-
+            message:
+              "*** WARNING *** Deleting a department will delete all role and employees associated with the department. Do you want to continue?",
+            choices: ["NO", "YES"],
+          },
+        ])
+        .then((answer) => {
+          // if not, go back to main menu
+          if (answer.continueDelete === "NO") {
+            mainMenu();
+          }
+        })
+        .then(() => {
+          inquirer
+            .prompt([
+              {
                 // prompt user to select department
                 name: "dept",
                 type: "list",
                 message: "Which department would you like to delete?",
-                choices: deptArr
-            }, {
-
+                choices: deptArr,
+              },
+              {
                 // confirm with user to delete
                 name: "confirmDelete",
                 type: "Input",
-                message: "Type the department name EXACTLY to confirm deletion of the department: "
-
-            }]).then((answer) => {
-
-                if (answer.confirmDelete === answer.dept){
-
-                    // if confirmed, get department id
-                    let deptID;
-                    for (i=0; i < depts.length; i++){
-                        if (answer.dept == depts[i].department_name){
-                            deptID = depts[i].id;
-                        }
-                    }
-
-                    // delete department
-                    connection.query(`DELETE FROM department WHERE id=${deptID};`, (err, res) => {
-                        if(err) return err;
-
-                        // confirm department has been deleted
-                        console.log(`\n DEPARTMENT '${answer.dept}' DELETED...\n `);
-
-                        mainMenu();
-                    });
+                message:
+                  "Type the department name EXACTLY to confirm deletion of the department: ",
+              },
+            ])
+            .then((answer) => {
+              if (answer.confirmDelete === answer.dept) {
+                // if confirmed, get department id
+                let deptID;
+                for (i = 0; i < depts.length; i++) {
+                  if (answer.dept == depts[i].department_name) {
+                    deptID = depts[i].id;
+                  }
                 }
-                else {
 
-                    // do not delete department if not confirmed and go back to main menu
-                    console.log(`\n DEPARTMENT '${answer.dept}' NOT DELETED...\n `);
+                // delete department
+                connection.query(
+                  `DELETE FROM department WHERE id=${deptID};`,
+                  (err, res) => {
+                    if (err) return err;
+
+                    // confirm department has been deleted
+                    console.log(`\n DEPARTMENT '${answer.dept}' DELETED...\n `);
 
                     mainMenu();
-                }
+                  }
+                );
+              } else {
+                // do not delete department if not confirmed and go back to main menu
+                console.log(`\n DEPARTMENT '${answer.dept}' NOT DELETED...\n `);
 
+                mainMenu();
+              }
             });
-        })
-    });
+        });
+    }
+  );
 }
 
 function viewBudget() {
-    console.log(chalk.yellow.bold(`====================================================================================`));
-    console.log(`                              ` + chalk.blue.bold(`Budget By Department:`));
-    console.log(chalk.yellow.bold(`====================================================================================`));
+  console.log(
+    chalk.yellow.bold(
+      `====================================================================================`
+    )
+  );
+  console.log(
+    `                              ` + chalk.blue.bold(`Budget By Department:`)
+  );
+  console.log(
+    chalk.yellow.bold(
+      `====================================================================================`
+    )
+  );
 
-    const sql =     `SELECT department_id AS id, 
+  const sql = `SELECT department_id AS id, 
     department.department_name AS department,
               SUM(salary) AS budget
               FROM  role 
               INNER JOIN department ON role.department_id = department.id GROUP BY role.department_id`;
-    connection.query(sql, (error, response) => {
-        if (error) throw error;
-        console.table(response);
-        console.log(chalk.yellow.bold(`====================================================================================`));
+  connection.query(sql, (error, response) => {
+    if (error) throw error;
+    console.table(response);
+    console.log(
+      chalk.yellow.bold(
+        `====================================================================================`
+      )
+    );
 
-        mainMenu();
-    });
+    mainMenu();
+  });
 }
