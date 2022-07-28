@@ -143,3 +143,60 @@ function viewRoles() {
         mainMenu();
     });
 };
+
+function viewManagers() { 
+    let managerArr = [];
+
+    promisemysql.createConnection(db).then((connect) => { 
+        return connect.query("SELECT DISTINCT m.id, CONCAT(m.first_name, ' ', m.last_name) AS manager FROM employee e Inner JOIN employee m ON e.manager_id = m.id");
+
+    }).then(function (managers) { 
+        for (i = 0; i < managers.length; i ++) {
+            managerArr.push(managers[i].manager);
+        }
+
+        return managers;
+    }).then((managers) => {
+
+        inquirer.prompt({ 
+            name: "manager",
+            type: "list",
+            message: "Which manager would you like to search?",
+            choices: managerArr
+        }).then((answer) => {
+
+            let managerID;
+
+
+            for (i = 0; i < managers.length; i ++) {
+                if (answer.manager == managers[i].manager) {
+                    managerID = managers[i].id;
+                }
+            }
+
+
+            const query = `SELECT e.id, e.first_name, e.last_name, role.title, department.department_name AS department, role.salary, concat(m.first_name, ' ' ,  m.last_name) AS manager
+        FROM employee e
+        LEFT JOIN employee m ON e.manager_id = m.id
+        INNER JOIN role ON e.role_id = role.id
+        INNER JOIN department ON role.department_id = department.id
+        WHERE e.manager_id = ${managerID};`;
+
+            connection.query(query, (err, res) => {
+                if (err) 
+                    return err;
+                
+
+                // Results displayed in console.table
+                console.log("\n");
+                console.log(chalk.yellow.bold(`====================================================================================`));
+                console.log(`                              ` + chalk.blue.bold(`Employees by Manager:`));
+                console.log(chalk.yellow.bold(`====================================================================================`));
+
+                console.table(res);
+
+                mainMenu();
+            });
+        });
+    });
+}
