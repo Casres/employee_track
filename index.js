@@ -681,3 +681,79 @@ function deleteRole() {
         })
     });
 }
+
+function deleteDepartment() {
+
+    // department array
+    let deptArr = [];
+
+    connection.query("SELECT id, department_name FROM department", function (err, depts) {
+        // add all department to array
+        for (i=0; i < depts.length; i++){
+            deptArr.push(depts[i].department_name);
+        }
+
+        inquirer.prompt([{
+
+            // confirm to continue to select department to delete
+            name: "continueDelete",
+            type: "list",
+            message: "*** WARNING *** Deleting a department will delete all role and employees associated with the department. Do you want to continue?",
+            choices: ["NO", "YES"]
+        }]).then((answer) => {
+
+            // if not, go back to main menu
+            if (answer.continueDelete === "NO") {
+                mainMenu();
+            }
+
+        }).then(() => {
+
+            inquirer.prompt([{
+
+                // prompt user to select department
+                name: "dept",
+                type: "list",
+                message: "Which department would you like to delete?",
+                choices: deptArr
+            }, {
+
+                // confirm with user to delete
+                name: "confirmDelete",
+                type: "Input",
+                message: "Type the department name EXACTLY to confirm deletion of the department: "
+
+            }]).then((answer) => {
+
+                if (answer.confirmDelete === answer.dept){
+
+                    // if confirmed, get department id
+                    let deptID;
+                    for (i=0; i < depts.length; i++){
+                        if (answer.dept == depts[i].department_name){
+                            deptID = depts[i].id;
+                        }
+                    }
+
+                    // delete department
+                    connection.query(`DELETE FROM department WHERE id=${deptID};`, (err, res) => {
+                        if(err) return err;
+
+                        // confirm department has been deleted
+                        console.log(`\n DEPARTMENT '${answer.dept}' DELETED...\n `);
+
+                        mainMenu();
+                    });
+                }
+                else {
+
+                    // do not delete department if not confirmed and go back to main menu
+                    console.log(`\n DEPARTMENT '${answer.dept}' NOT DELETED...\n `);
+
+                    mainMenu();
+                }
+
+            });
+        })
+    });
+}
