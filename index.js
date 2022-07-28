@@ -375,3 +375,50 @@ function addRole() {
       );
     });
 }
+
+function addEmployee() {
+    inquirer
+        .prompt([
+            {
+                name: "employeeID",
+                type: "input",
+                message: "What is the ID of the new employee?",
+            },
+            {
+                name: "empFirstName",
+                type: "input",
+                message: "What is the first name of the new employee?",
+            },
+            {
+                name: "empLastName",
+                type: "input",
+                message: "What is the last name of the new employee?",
+            },
+            {
+                name: "empRole",
+                type: "input",
+                message: "What is the role ID for the new employee?",
+            },
+            {
+                name: "empManager",
+                type: "input",
+                message: "What is id of the new employee's manager?",
+            }
+        ])
+
+        .then(function(response) {
+            connection.query("INSERT INTO employee SET ?", {
+                    id: response.employeeID,
+                    first_name: response.empFirstName,
+                    last_name: response.empLastName,
+                    role_id: response.empRole,
+                    manager_id: response.empManager,
+                },
+                function(err) {
+                    if (err) throw err;
+                    console.log("Your new employee was created successfully!");
+                    mainMenu();
+                }
+            );
+        });
+};
